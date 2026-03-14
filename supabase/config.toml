@@ -1,0 +1,4 @@
+project_id = "mtzwhudaiepgrqvbdsrw"
+
+[functions.generate-sdlc]
+verify_jwt = false
