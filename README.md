@@ -2,7 +2,7 @@
 
 A RAG-based AI-powered web application that automatically generates all 6 phases of the Software Development Life Cycle (SDLC) from a project description, uploaded documents, and defect datasets.
 
-## 🏗️ System Architecture (4-Layer)
+##  System Architecture (4-Layer)
 
 ```
 ┌─────────────────────────────────────────────────────┐
@@ -63,7 +63,7 @@ A RAG-based AI-powered web application that automatically generates all 6 phases
 | Frontend | React 18, TypeScript, Tailwind CSS, Framer Motion |
 | UI Components | shadcn/ui, Radix UI primitives |
 | Diagrams | Mermaid.js |
-| AI Model | Google Gemini (via Lovable Cloud AI Gateway) |
+| AI Model | Google Gemini |
 | Backend | Lovable Cloud (Edge Functions for AI inference) |
 | Build Tool | Vite |
 | State Management | TanStack React Query |
