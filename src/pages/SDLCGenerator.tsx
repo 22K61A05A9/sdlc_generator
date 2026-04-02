@@ -56,6 +56,154 @@ const PHASE_ICON_COLORS: Record<string, string> = {
   maintenance: "bg-rose-500/15 text-rose-400",
 };
 
+// ========== Mock Implementation for Offline/Network Failures ==========
+const MOCK_CONTENT: Record<string, string> = {
+  requirements: `# Software Requirements Specification
+## 1. Project Overview
+This project is an AI-powered SDLC automation tool that generates artifacts for all software development phases.
+
+## 2. Functional Requirements
+- FR-001: The system shall allow users to input project descriptions.
+- FR-002: The system shall generate SRS documents.
+- FR-003: The system shall generate system designs with diagrams.
+- FR-004: The system shall generate implementation code.
+- FR-005: The system shall provide testing strategies.
+
+## 3. Non-Functional Requirements
+- NFR-001: Performance - Generation should take less than 30 seconds.
+- NFR-002: Security - All user data must be stored securely.
+
+## 4. User Roles
+- Admin: Full system access.
+- Developer: Can generate and download artifacts.
+
+## 5. Key Use Cases
+- Generate Full SDLC: User provides description and gets all 6 phases.
+- Export Report: User downloads the generated artifacts as a PDF.`,
+
+  design: `# System Design Document
+## 1. Architecture Pattern
+Microservices architecture with a React frontend and Supabase Edge Functions.
+
+## 2. System Architecture
+\`\`\`mermaid
+graph TD
+    A[Frontend] --> B[Edge Functions]
+    B --> C[AI Gateway]
+    C --> D[Gemini AI]
+\`\`\`
+
+## 3. Database ER Diagram
+\`\`\`mermaid
+erDiagram
+    PROJECT ||--o{ ARTIFACT : contains
+    PROJECT {
+        string id
+        string name
+        string description
+    }
+    ARTIFACT {
+        string id
+        string phase
+        string content
+    }
+\`\`\`
+
+## 4. API Endpoints
+| Method | Path | Description |
+|--------|------|-------------|
+| POST | /functions/v1/generate-sdlc | Triggers AI generation |`,
+
+  implementation: `# Implementation & Code
+## 1. Project Structure
+\`\`\`
+src/
+  components/
+  pages/
+  hooks/
+  lib/
+supabase/
+  functions/
+\`\`\`
+
+## 2. Database Schema
+\`\`\`sql
+CREATE TABLE projects (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  name TEXT NOT NULL,
+  description TEXT
+);
+\`\`\`
+
+## 3. Backend API
+\`\`\`javascript
+const express = require('express');
+const app = express();
+app.post('/api/generate', (req, res) => {
+  // AI Generation logic
+});
+\`\`\``,
+
+  testing: `# Testing & QA Strategy
+## 1. Test Tools
+- Jest, Vitest, Cypress
+
+## 2. Unit Tests
+\`\`\`typescript
+test('should generate artifacts', () => {
+  const result = generate('test project');
+  expect(result).toBeDefined();
+});
+\`\`\`
+
+## 3. API Tests
+- GET /api/projects: 200 OK
+- POST /api/generate: 201 Created`,
+
+  deployment: `# Deployment Plan
+## 1. Cloud Architecture
+\`\`\`mermaid
+graph LR
+    GH[GitHub Actions] --> D[Docker Hub]
+    D --> K8s[Kubernetes Cluster]
+\`\`\`
+
+## 2. Dockerfile
+\`\`\`dockerfile
+FROM node:18-alpine
+WORKDIR /app
+COPY . .
+RUN npm install
+CMD ["npm", "run", "dev"]
+\`\`\``,
+
+  maintenance: `# Maintenance & Support
+## 1. Strategy
+- Continuous monitoring and proactive bug fixing.
+
+## 2. Predicted Defects
+| ID | Description | Severity | Component |
+|----|-------------|----------|-----------|
+| D-01 | API Timeout | High | Gateway |
+| D-02 | Memory Leak | Medium | UI |`,
+};
+
+async function mockStreamPhase(
+  phase: string,
+  onDelta: (text: string) => void,
+  onDone: () => void,
+) {
+  const content = MOCK_CONTENT[phase] || "Mock content for " + phase;
+  const words = content.split(" ");
+  
+  for (let i = 0; i < words.length; i++) {
+    onDelta(words[i] + " ");
+    await new Promise(r => setTimeout(r, 20)); // Simulate streaming
+  }
+  
+  onDone();
+}
+
 // ========== Streaming Logic ==========
 async function streamPhase(
   projectDescription: string,
@@ -74,6 +222,7 @@ async function streamPhase(
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${SUPABASE_KEY}`,
+        apikey: SUPABASE_KEY,
       },
       body: JSON.stringify({
         projectDescription,
@@ -86,9 +235,10 @@ async function streamPhase(
     });
 
     if (!resp.ok) {
-      const errData = await resp.json().catch(() => ({ error: "Request failed" }));
-      onError(errData.error || `Error ${resp.status}`);
-      return;
+      // Fallback to mock on server errors
+      console.warn(`Server error ${resp.status}, falling back to mock mode`);
+      toast.info("Using simulation mode due to service unavailability");
+      return mockStreamPhase(phase, onDelta, onDone);
     }
 
 
@@ -141,7 +291,9 @@ async function streamPhase(
     onDone();
   } catch (e: any) {
     if (e.name !== "AbortError") {
-      onError(e.message || "Unknown error");
+      console.warn("Network error, falling back to mock mode:", e);
+      toast.info("Using offline simulation mode");
+      return mockStreamPhase(phase, onDelta, onDone);
     }
   }
 }
